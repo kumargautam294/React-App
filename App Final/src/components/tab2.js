@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { withStyles, makeStyles } from '@material-ui/core/styles';
+import { withStyles, makeStyles, useTheme } from '@material-ui/core/styles';
 import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
@@ -17,7 +17,13 @@ import EditIcon from '@material-ui/icons/Edit';
 import DialogComponent from './dialogComponent';
 import TextField from '@material-ui/core/TextField';
 import CircularProgress from '@material-ui/core/CircularProgress';
-
+import TablePagination from '@material-ui/core/TablePagination';
+import TableFooter from '@material-ui/core/TableFooter';
+import FirstPageIcon from '@material-ui/icons/FirstPage';
+import KeyboardArrowLeft from '@material-ui/icons/KeyboardArrowLeft';
+import KeyboardArrowRight from '@material-ui/icons/KeyboardArrowRight';
+import LastPageIcon from '@material-ui/icons/LastPage';
+import PropTypes from 'prop-types';
 
 const StyledTableCell = withStyles((theme) => ({
     head: {
@@ -57,11 +63,76 @@ const useStyles = makeStyles((theme) => ({
         marginBottom: theme.spacing(4),
     }
 }));
+const useStyles1 = makeStyles((theme) => ({
+  root: {
+    flexShrink: 0,
+    marginLeft: theme.spacing(2.5),
+  },
+}));
+
+function TablePaginationActions(props) {
+  const classes = useStyles1();
+  const theme = useTheme();
+  const { count, page, rowsPerPage, onChangePage } = props;
+
+  const handleFirstPageButtonClick = (event) => {
+    onChangePage(event, 0);
+  };
+
+  const handleBackButtonClick = (event) => {
+    onChangePage(event, page - 1);
+  };
+
+  const handleNextButtonClick = (event) => {
+    onChangePage(event, page + 1);
+  };
+
+  const handleLastPageButtonClick = (event) => {
+    onChangePage(event, Math.max(0, Math.ceil(count / rowsPerPage) - 1));
+  };
+
+  return (
+    <div className={classes.root}>
+      <IconButton
+        onClick={handleFirstPageButtonClick}
+        disabled={page === 0}
+        aria-label="first page"
+      >
+        {theme.direction === 'rtl' ? <LastPageIcon /> : <FirstPageIcon />}
+      </IconButton>
+      <IconButton onClick={handleBackButtonClick} disabled={page === 0} aria-label="previous page">
+        {theme.direction === 'rtl' ? <KeyboardArrowRight /> : <KeyboardArrowLeft />}
+      </IconButton>
+      <IconButton
+        onClick={handleNextButtonClick}
+        disabled={page >= Math.ceil(count / rowsPerPage) - 1}
+        aria-label="next page"
+      >
+        {theme.direction === 'rtl' ? <KeyboardArrowLeft /> : <KeyboardArrowRight />}
+      </IconButton>
+      <IconButton
+        onClick={handleLastPageButtonClick}
+        disabled={page >= Math.ceil(count / rowsPerPage) - 1}
+        aria-label="last page"
+      >
+        {theme.direction === 'rtl' ? <FirstPageIcon /> : <LastPageIcon />}
+      </IconButton>
+    </div>
+  );
+}
+
+TablePaginationActions.propTypes = {
+  count: PropTypes.number.isRequired,
+  onChangePage: PropTypes.func.isRequired,
+  page: PropTypes.number.isRequired,
+  rowsPerPage: PropTypes.number.isRequired,
+};
 
 export default function Tab2(props) {
     const classes = useStyles();
 
     const [propertyData, setPropertyData] = useState([]);
+    const [propertyDataCopy, setPropertyDataCopy] = useState([]);
     const [alertStatusDelete, setAlertStatusDelete] = useState(false);
     const [selectedRowDelete, setSelectedRowDelete] = useState(null);
     const [alertStatusEdit, setAlertStatusEdit] = useState(false);
@@ -71,9 +142,8 @@ export default function Tab2(props) {
     const [ postDialog, setPostDialog] = useState(false);
     const [ loader, setLoader] = useState(true);
     const { userId } = props;
-
-    const [searchData, startSearch] = React.useState(null);
-
+    const [page, setPage] = React.useState(0);
+    const [rowsPerPage, setRowsPerPage] = React.useState(5);
 
     useEffect(() => {
         fetchData();
@@ -90,6 +160,7 @@ export default function Tab2(props) {
             .then(response => response.json())
             .then(data => {
                 setPropertyData(data);
+                setPropertyDataCopy(data);
                 setLoader(false)
             });
     }
@@ -127,19 +198,39 @@ export default function Tab2(props) {
         setPostDialog(false);
     }
 
+    const handleChangePage = (event, newPage) => {
+      setPage(newPage);
+    };
+  
+    const handleChangeRowsPerPage = (event) => {
+      setRowsPerPage(parseInt(event.target.value, 10));
+      setPage(0);
+    };
+
+    const filterData = (event) => {
+        console.log(event);
+        const data = propertyDataCopy.filter((row)=>{
+            if(event == null)
+                return row
+            else if(row.title.toLowerCase().includes(event.toLowerCase()) || row.body.toLowerCase().includes(event.toLowerCase())){
+                return row
+        }});
+        setPropertyData(data);
+    };
+
     return (
         <>
-        <TextField 
-            className={classes.search}
-            id="outlined-search"
-            label="Search Title or Body"
-            type="search"
-            variant="outlined"
-            onKeyUp={(evt) =>
-                startSearch(evt.target.value )
-            }
-        />
-
+            <TextField 
+                className={classes.search}
+                id="outlined-search"
+                label="Search Title or Body"
+                type="search"
+                variant="outlined"
+                onKeyUp={(evt) => {
+                    filterData(evt.target.value);
+                }
+                }
+            />
             <TableContainer component={Paper}>
                 <Table className={classes.table} aria-label="simple table">
                     <TableHead>
@@ -158,12 +249,9 @@ export default function Tab2(props) {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {propertyData.filter((row)=>{
-                            if(searchData == null)
-                                return row
-                            else if(row.title.toLowerCase().includes(searchData.toLowerCase()) || row.body.toLowerCase().includes(searchData.toLowerCase())){
-                                return row
-                        }}).map((row) => (
+                        {(rowsPerPage > 0
+                            ? propertyData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                            : propertyData).map((row) => (
                             <StyledTableRow key={row.name} onClick={(e) => clickRow(e, row)}>
                                 {
                                     !userId ?
@@ -191,6 +279,20 @@ export default function Tab2(props) {
                         ))}
                     </TableBody>
                 </Table>
+                <TablePagination
+                    rowsPerPageOptions={[5, 10, 25, { label: 'All', value: -1 }]}
+                    colSpan={3}
+                    count={propertyData.length}
+                    rowsPerPage={rowsPerPage}
+                    page={page}
+                    SelectProps={{
+                        inputProps: { 'aria-label': 'rows per page' },
+                        native: true,
+                    }}
+                    onChangePage={handleChangePage}
+                    onChangeRowsPerPage={handleChangeRowsPerPage}
+                    ActionsComponent={TablePaginationActions}
+                    />
                 
                 { loader ? <div className={classes.dataLoader}><CircularProgress /></div> : ""}
 
