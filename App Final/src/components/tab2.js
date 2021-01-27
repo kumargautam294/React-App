@@ -4,6 +4,7 @@ import Table from '@material-ui/core/Table';
 import TableBody from '@material-ui/core/TableBody';
 import TableCell from '@material-ui/core/TableCell';
 import TableContainer from '@material-ui/core/TableContainer';
+import TablePagination from '@material-ui/core/TablePagination';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import Paper from '@material-ui/core/Paper';
@@ -17,6 +18,7 @@ import EditIcon from '@material-ui/icons/Edit';
 import DialogComponent from './dialogComponent';
 import TextField from '@material-ui/core/TextField';
 import Button from '@material-ui/core/Button';
+import CircularProgress from '@material-ui/core/CircularProgress';
 
 
 const StyledTableCell = withStyles((theme) => ({
@@ -51,6 +53,11 @@ const useStyles = makeStyles((theme) => ({
     search: {
         marginBottom: theme.spacing(2),
       },
+    dataLoader: {
+        textAlign: "center",
+        marginTop: theme.spacing(4),
+        marginBottom: theme.spacing(4),
+    }
 }));
 
 export default function Tab2(props) {
@@ -64,6 +71,7 @@ export default function Tab2(props) {
     const [selectedRow, setSelectedRow] = useState(null);
     const [toastData, setToastData] = React.useState(null);
     const [ postDialog, setPostDialog] = useState(false);
+    const [ loader, setLoader] = useState(true);
     const { userId } = props;
 
     const [searchData, startSearch] = React.useState(null);
@@ -82,7 +90,10 @@ export default function Tab2(props) {
         }
         fetch(url)
             .then(response => response.json())
-            .then(data => setPropertyData(data));
+            .then(data => {
+                setPropertyData(data);
+                setLoader(false)
+            });
     }
 
     const onEditRow = (e, row) => {
@@ -182,6 +193,9 @@ export default function Tab2(props) {
                         ))}
                     </TableBody>
                 </Table>
+                
+                { loader ? <div className={classes.dataLoader}><CircularProgress /></div> : ""}
+
                 {
                     alertStatusDelete ? <DeletePostComponent cancelDelete={cancelDelete} fetchData={fetchData} setToastData={setToastData} row={selectedRowDelete} status={alertStatusDelete} /> : ''
                 }
